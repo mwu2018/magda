@@ -1,4 +1,5 @@
 const instanceURL = "/api/v0";
+let timeout = null;
 
 window.onload = function() {
     refresh();
@@ -18,13 +19,29 @@ async function refresh() {
             return;
         }
 
-        showMe(body.append("div"), me);
+        const sections = {
+            "My Information": showMe.bind(null, me),
+            "Header Logo": showHeaderLogo,
+            "Header Navigation": showHeaderNavigation,
+            "Header Taglines": showHeaderTaglines,
+            "Homepage Highlights": showHeaderTaglines,
+            "Homepage Stories": showHomeStories,
+            "CSV Data": showSpreadsheets,
+            Connectors: showConnectors
+        };
 
-        showConfig(body.append("div"));
-
-        showSpreadsheets(body.append("div"));
-
-        showConnectors(body.append("div"));
+        const section = body.append("select");
+        const sectionBody = body.append("div");
+        for (let key of Object.keys(sections)) {
+            section.append("option").text(key);
+        }
+        section.on("change", () => {
+            if (timeout) {
+                clearTimeout(timeout);
+            }
+            sections[section.property("value")](sectionBody.text("Loading..."));
+        });
+        section.on("change")();
     } catch (e) {
         body.append("pre").text(e);
 
@@ -39,8 +56,14 @@ async function refresh() {
     }
 }
 
-function showConfig(body) {
-    body.append("h2").text("Configuration");
+function showMe(me, body) {
+    body.text("");
+    body.append("h2").text("My Information");
+    body.append("pre").text(JSON.stringify(me, null, 2));
+}
+
+function showHeaderLogo(body) {
+    body.append("h2").text("Header Logo");
 
     const table = body.append("table");
 
@@ -57,10 +80,6 @@ function showConfig(body) {
     row = table.append("tr");
     row.append("td").text("Mobile Logo");
     imageConfig(row.append("td"), "header/logo-mobile");
-
-    showHeaderNavigation(body.append("div"));
-
-    showHeaderTaglines(body.append("div"));
 }
 
 function showHeaderNavigation(body) {
@@ -84,9 +103,17 @@ function showHeaderTaglines(body) {
     });
 }
 
-async function showJsonEditor(body, options) {
-    body.text("Loading...");
+function showHomeStories(body) {
+    showJsonEditor(body, {
+        label: "Home Stories",
+        idPattern: "home/story/*",
+        schema: homeStorySchema,
+        allowDelete: true,
+        allowAdd: true
+    });
+}
 
+async function showJsonEditor(body, options) {
     let files = await request(
         "GET",
         `/api/v0/content/all?id=${options.idPattern}&inline=true`
@@ -101,6 +128,7 @@ async function showJsonEditor(body, options) {
 
     if (files.length > 0) {
         files.forEach(file => {
+            body.append("h3").text(file.id);
             const container = jsoneditor(
                 body.append("div").style("border", "10px solid black"),
                 "Edit",
@@ -205,11 +233,6 @@ function jsoneditor(parent, title, schema, startval, label, callback) {
     editor.on("change", validate);
     validate();
     return parent;
-}
-
-function showMe(body, me) {
-    body.append("h2").text("User");
-    body.append("pre").text(JSON.stringify(me, null, 2));
 }
 
 function imageConfig(body, name) {
@@ -345,6 +368,8 @@ async function showSpreadsheets(body) {
     body.append("H3").text("Upload new");
 
     spreadsheetConfig(body);
+
+    showConnectors(body.append("div"));
 }
 
 async function deleteContent(name) {
@@ -380,6 +405,7 @@ async function createConnector(name) {
 }
 
 function showConnectors(body) {
+    body.text("");
     body.text("Loading...");
 
     async function refresh() {
@@ -440,7 +466,7 @@ function showConnectors(body) {
 
         // body.append("pre").text(JSON.stringify(connectors, null, 2));
 
-        setTimeout(refresh, running ? 1000 : 5000);
+        timeout = setTimeout(refresh, running ? 1000 : 5000);
     }
 
     refresh();
@@ -536,4 +562,27 @@ const headerNavigationSchema = {
 
 const headerTaglineSchema = {
     type: "string"
+};
+
+const homeStorySchema = {
+    type: "object",
+    properties: {
+        title: {
+            type: "string",
+            minLength: 1
+        },
+        titleUrl: {
+            type: "string",
+            minLength: 1
+        },
+        order: {
+            type: "number"
+        },
+        content: {
+            type: "string",
+            minLength: 1,
+            format: "markdown"
+        }
+    },
+    required: ["title", "order", "content"]
 };

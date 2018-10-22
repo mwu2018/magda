@@ -53,7 +53,7 @@ export const content: { [s: string]: ContentItem } = {
     "home/tagline/mobile": makeJsonItem({}, { schema: schemas.homeTagLine }),
     "home/highlights/*": makeJsonItem({}, { schema: schemas.homeHighlight }),
     "home/highlight-images/*": makeImageItem(),
-    "home/story/*": makeJsonItem({}, { schema: schemas.homeStory }),
+    "home/stories/*": makeJsonItem({}, { schema: schemas.homeStory }),
     "home/story-images/*": makeImageItem(),
     stylesheet: makeCssItem(),
     "staticPages/*.md": makeMarkdownItem(),
